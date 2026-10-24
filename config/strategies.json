@@ -148,6 +148,21 @@
       "fd_stop_buffer_atr": 0.05,
       "direction": "both",
       "max_trades": 1
+    },
+    "B_fade_v3": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 0.225,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "both",
+      "max_trades": 2
     }
   }
 }

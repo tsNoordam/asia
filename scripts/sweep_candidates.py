@@ -2,7 +2,8 @@
 
 Only TRAIN and VAL are evaluated (asiabt.research.sweep refuses OOS).
 Long and short sides are swept separately, as required.
-Outputs results/sweep_A.csv and results/sweep_B.csv.
+Outputs results/sweep_A.csv, sweep_B.csv and sweep_B2.csv (focused fade sweep).
+Usage: python scripts/sweep_candidates.py [A] [B] [B2]
 """
 import pathlib
 import sys
@@ -47,21 +48,6 @@ def run_B():
     return rows
 
 
-def main():
-    import pandas as pd
-    pathlib.Path("results").mkdir(exist_ok=True)
-    which = sys.argv[1:] or ["A", "B"]
-    for w in which:
-        t0 = time.time()
-        df = pd.concat(run_A() if w == "A" else run_B(), ignore_index=True)
-        df.to_csv(f"results/sweep_{w}.csv", index=False)
-        print(w, len(df), "configs", f"{time.time() - t0:.0f}s", flush=True)
-
-
-if __name__ == "__main__" and sys.argv[1:] != ["B2"]:
-    main()
-
-
 def run_B2():
     """Focused fade sweep around the plateau found in sweep B (TRAIN/VAL only)."""
     rows = []
@@ -79,8 +65,16 @@ def run_B2():
     return rows
 
 
-if __name__ == "__main__" and sys.argv[1:] == ["B2"]:
+def main():
     import pandas as pd
-    t0 = time.time()
-    pd.concat(run_B2(), ignore_index=True).to_csv("results/sweep_B2.csv", index=False)
-    print("B2 done", f"{time.time() - t0:.0f}s")
+    pathlib.Path("results").mkdir(exist_ok=True)
+    runners = {"A": run_A, "B": run_B, "B2": run_B2}
+    for w in sys.argv[1:] or ["A", "B", "B2"]:
+        t0 = time.time()
+        df = pd.concat(runners[w](), ignore_index=True)
+        df.to_csv(f"results/sweep_{w}.csv", index=False)
+        print(w, len(df), "configs", f"{time.time() - t0:.0f}s", flush=True)
+
+
+if __name__ == "__main__":
+    main()

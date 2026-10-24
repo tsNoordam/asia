@@ -66,6 +66,9 @@ class Params:
     fd_stop_buffer_atr: float = 0.05  # stop beyond the excursion extreme
     fd_target: str = "mid"            # mid | opposite | r
     fd_target_r: float = 1.0
+    # --- trade management (both modes) ----------------------------------
+    be_trigger: str = "none"          # none | mid (range midpoint) | <float> R multiple, e.g. "1.0"
+    max_hold_min: int = 0             # time stop in minutes after entry (0 = only flat_time)
     # --- hybrid ---------------------------------------------------------
     hybrid_thr: float = 0.35          # range/ATR below -> breakout mode, else fade mode
     # --- timed benchmark --------------------------------------------------
@@ -90,13 +93,18 @@ def _first_valid(a: np.ndarray, start: int, end: int) -> int:
     return -1
 
 
-def _simulate_exit(o, h, l, c, e, side, entry_px, stop, target, flat, costs):
-    """Walk 1-minute bars from entry bar `e`. Returns (exit_off, exit_px, reason, mae, mfe)."""
+def _simulate_exit(o, h, l, c, e, side, entry_px, stop, target, flat, costs, be_px=math.nan):
+    """Walk 1-minute bars from entry bar `e`. Returns (exit_off, exit_px, reason, mae, mfe).
+
+    If `be_px` is given, the stop moves to the entry price from the bar AFTER
+    the one in which price first reaches `be_px` (no intrabar ordering is
+    assumed)."""
     slip = costs.slip_ticks * costs.tick
     thru = costs.limit_through_ticks * costs.tick
     mae = 0.0
     mfe = 0.0
     last_c = entry_px
+    be_armed = False
     for j in range(e, flat):
         oj, hj, lj, cj = o[j], h[j], l[j], c[j]
         if oj != oj:
@@ -121,6 +129,9 @@ def _simulate_exit(o, h, l, c, e, side, entry_px, stop, target, flat, costs):
             return j, (stop - slip) if side > 0 else (stop + slip), "stop", mae, mfe
         if hit_tgt:
             return j, target, "target", mae, mfe
+        if not be_armed and be_px == be_px and ((side > 0 and hj >= be_px) or (side < 0 and lj <= be_px)):
+            be_armed = True
+            stop = entry_px  # effective from the next bar
         last_c = cj
     jx = _first_valid(o, flat, len(o))
     if jx >= 0:
@@ -174,7 +185,14 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
         base = dict(day=day, mode=mode, range_hi=RH, range_lo=RL, range_atr=ratio, atr=atr)
 
         def record(side, sig_off, e, entry_px, stop, target):
-            xo, xp, why, mae, mfe = _simulate_exit(o, h, l, c, e, side, entry_px, stop, target, flat, costs)
+            be_px = math.nan
+            if p.be_trigger == "mid":
+                mid = (RH + RL) / 2
+                be_px = mid if side * (mid - entry_px) > 0 else math.nan
+            elif p.be_trigger != "none":
+                be_px = entry_px + side * float(p.be_trigger) * abs(entry_px - stop)
+            end = min(flat, e + p.max_hold_min) if p.max_hold_min > 0 else flat
+            xo, xp, why, mae, mfe = _simulate_exit(o, h, l, c, e, side, entry_px, stop, target, end, costs, be_px)
             pts = side * (xp - entry_px)
             rows.append({**base, "side": side, "sig_off": sig_off, "entry_off": e, "entry_px": entry_px,
                          "exit_off": xo, "exit_px": xp, "reason": why, "stop": stop, "target": target,

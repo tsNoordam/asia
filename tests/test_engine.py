@@ -119,3 +119,65 @@ def test_stale_runs_are_removed(tmp_path):
     f.to_parquet(p)
     m = load_minutes(str(p), stale_run=10)
     assert len(m) < len(f) and len(f) - len(m) >= 29
+
+
+def test_breakeven_moves_stop_from_next_bar():
+    # long from 100, stop 95, target 110, breakeven trigger at 103
+    o = np.array([100.0, 101.0, 103.5, 101.0, 99.0])
+    h = np.array([100.5, 103.0, 104.0, 101.5, 99.5])
+    l = np.array([99.5, 100.5, 100.5, 99.5, 98.5])
+    c = o.copy()
+    xo, xp, why, *_ = _simulate_exit(o, h, l, c, 0, 1, 100.0, 95.0, 110.0, 5, NOCOST, be_px=103.0)
+    # trigger reached in bar 1 -> stop = 100 from bar 2; bar 3 low 99.5 hits it
+    assert why == "stop" and xo == 3 and xp == 100.0
+
+
+def _random_days(n_days=30, seed=1):
+    rng = np.random.default_rng(seed)
+    frames = []
+    px = 15000.0
+    for d in pd.bdate_range("2024-01-08", periods=n_days):
+        steps = rng.normal(0, 3.0, MINUTES_PER_DAY).cumsum() + px
+        start = d - pd.Timedelta(hours=6)
+        idx = pd.date_range(start, periods=MINUTES_PER_DAY, freq="1min")
+        o = steps
+        c = steps + rng.normal(0, 1.0, MINUTES_PER_DAY)
+        h = np.maximum(o, c) + rng.uniform(0, 2, MINUTES_PER_DAY)
+        l = np.minimum(o, c) - rng.uniform(0, 2, MINUTES_PER_DAY)
+        frames.append(pd.DataFrame({"open": o, "high": h, "low": l, "close": c}, index=idx))
+        px = c[-1]
+    return pd.concat(frames)
+
+
+@pytest.mark.parametrize("mode", ["fade", "breakout", "hybrid"])
+def test_no_lookahead_future_perturbation(mode):
+    """Trades that exit before time T must be identical when every bar at or
+    after T is replaced with different data."""
+    m = _random_days()
+    p = Params(mode=mode, max_trades=2, fd_min_ext=0.02, fd_max_ext=99.0)
+    base = run(build_grid(m), p, Costs())
+    cut_ts = m.index[len(m) // 2]
+    m2 = m.copy()
+    after = m2.index >= cut_ts
+    m2.loc[after, ["open", "high", "low", "close"]] = m2.loc[after, ["open", "high", "low", "close"]] * 1.03 + 50
+    pert = run(build_grid(m2), p, Costs())
+
+    def exit_ts(t):
+        return t["day"] - pd.Timedelta(hours=6) + pd.to_timedelta(t["exit_off"], unit="min")
+
+    keep = lambda df: df[df.apply(exit_ts, axis=1) < cut_ts - pd.Timedelta(days=1)].reset_index(drop=True)
+    a, b = keep(base), keep(pert)
+    assert len(a) > 0
+    pd.testing.assert_frame_equal(a, b)
+
+
+def test_daily_features_use_only_past_days():
+    m = _random_days(40)
+    g1 = build_grid(m)
+    m2 = m.copy()
+    late = m2.index >= m2.index[-5 * MINUTES_PER_DAY]
+    m2.loc[late, ["open", "high", "low", "close"]] *= 1.10
+    g2 = build_grid(m2)
+    cols = ["atr14_prev", "sma20_prev", "prev_close_adj", "ret5_prev"]
+    # features of every day before the perturbed tail (incl. the first perturbed day) are unchanged
+    pd.testing.assert_frame_equal(g1.daily[cols].iloc[:-4], g2.daily[cols].iloc[:-4])

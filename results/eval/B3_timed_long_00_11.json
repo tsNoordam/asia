@@ -23,6 +23,8 @@
   "fd_stop_buffer_atr": 0.05,
   "fd_target": "mid",
   "fd_target_r": 1.0,
+  "be_trigger": "none",
+  "max_hold_min": 0,
   "hybrid_thr": 0.35,
   "timed_side": 1,
   "min_range_cov": 0.9,

@@ -1,0 +1,318 @@
+{
+ "fade": {
+  "windows": [
+   {
+    "test_start": "2022-01-01",
+    "chosen": {
+     "fd_min_ext": 0.075,
+     "fd_max_ext": 99.0,
+     "tf": 5,
+     "entry_cutoff": "08:00"
+    },
+    "train_t": 2.06,
+    "test_trades": 66,
+    "test_avg_usd": 225.2,
+    "test_net_usd": 14866.0
+   },
+   {
+    "test_start": "2022-07-01",
+    "chosen": {
+     "fd_min_ext": 0.1,
+     "fd_max_ext": 99.0,
+     "tf": 5,
+     "entry_cutoff": "08:00"
+    },
+    "train_t": 2.74,
+    "test_trades": 45,
+    "test_avg_usd": -84.1,
+    "test_net_usd": -3786.0
+   },
+   {
+    "test_start": "2023-01-01",
+    "chosen": {
+     "fd_min_ext": 0.1,
+     "fd_max_ext": 99.0,
+     "tf": 5,
+     "entry_cutoff": "05:00"
+    },
+    "train_t": 2.15,
+    "test_trades": 21,
+    "test_avg_usd": 129.6,
+    "test_net_usd": 2721.0
+   },
+   {
+    "test_start": "2023-07-01",
+    "chosen": {
+     "fd_min_ext": 0.1,
+     "fd_max_ext": 99.0,
+     "tf": 5,
+     "entry_cutoff": "05:00"
+    },
+    "train_t": 1.82,
+    "test_trades": 20,
+    "test_avg_usd": 148.1,
+    "test_net_usd": 2963.0
+   },
+   {
+    "test_start": "2024-01-01",
+    "chosen": {
+     "fd_min_ext": 0.125,
+     "fd_max_ext": 0.2,
+     "tf": 5,
+     "entry_cutoff": "11:00"
+    },
+    "train_t": 1.69,
+    "test_trades": 37,
+    "test_avg_usd": 50.3,
+    "test_net_usd": 1862.0
+   },
+   {
+    "test_start": "2024-07-01",
+    "chosen": {
+     "fd_min_ext": 0.1,
+     "fd_max_ext": 0.2,
+     "tf": 15,
+     "entry_cutoff": "08:00"
+    },
+    "train_t": 1.22,
+    "test_trades": 32,
+    "test_avg_usd": 20.5,
+    "test_net_usd": 656.0
+   },
+   {
+    "test_start": "2025-01-01",
+    "chosen": {
+     "fd_min_ext": 0.125,
+     "fd_max_ext": 0.2,
+     "tf": 15,
+     "entry_cutoff": "08:00"
+    },
+    "train_t": 2.17,
+    "test_trades": 17,
+    "test_avg_usd": 10.9,
+    "test_net_usd": 186.0
+   },
+   {
+    "test_start": "2025-07-01",
+    "chosen": {
+     "fd_min_ext": 0.075,
+     "fd_max_ext": 0.25,
+     "tf": 5,
+     "entry_cutoff": "11:00"
+    },
+    "train_t": 2.59,
+    "test_trades": 85,
+    "test_avg_usd": -5.8,
+    "test_net_usd": -496.0
+   },
+   {
+    "test_start": "2026-01-01",
+    "chosen": {
+     "fd_min_ext": 0.075,
+     "fd_max_ext": 0.25,
+     "tf": 15,
+     "entry_cutoff": "11:00"
+    },
+    "train_t": 2.45,
+    "test_trades": 74,
+    "test_avg_usd": -234.2,
+    "test_net_usd": -17334.0
+   },
+   {
+    "test_start": "2026-07-01",
+    "chosen": {
+     "fd_min_ext": 0.1,
+     "fd_max_ext": 0.25,
+     "tf": 5,
+     "entry_cutoff": "11:00"
+    },
+    "train_t": 1.57,
+    "test_trades": 46,
+    "test_avg_usd": -341.0,
+    "test_net_usd": -15685.0
+   }
+  ],
+  "summary": {
+   "trades": 443,
+   "days": 1198,
+   "net_usd": -14047.41071428547,
+   "pf": 0.9602036523976946,
+   "win_rate": 0.4966139954853273,
+   "avg_usd": -31.709730732021377,
+   "avg_pts": -1.3354865366010689,
+   "avg_win": 1540.6136363636363,
+   "avg_loss": -1582.8807655349124,
+   "t_stat": -0.3601702843391919,
+   "sharpe": -0.16812477054228417,
+   "max_dd_usd": -41838.392857142535,
+   "exposure": 0.04276753526408749,
+   "long_n": 231,
+   "long_usd": -28644.749999999913,
+   "short_n": 212,
+   "short_usd": 14597.339285714443
+  }
+ },
+ "breakout": {
+  "windows": [
+   {
+    "test_start": "2022-01-01",
+    "chosen": {
+     "bo_target_r": 1.5,
+     "tf": 15,
+     "entry_cutoff": "08:00",
+     "flat_time": "16:00",
+     "direction": "long"
+    },
+    "train_t": 0.23,
+    "test_trades": 65,
+    "test_avg_usd": -70.7,
+    "test_net_usd": -4596.0
+   },
+   {
+    "test_start": "2022-07-01",
+    "chosen": {
+     "bo_target_r": 0.0,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "11:00",
+     "direction": "short"
+    },
+    "train_t": 0.61,
+    "test_trades": 62,
+    "test_avg_usd": 427.9,
+    "test_net_usd": 26532.0
+   },
+   {
+    "test_start": "2023-01-01",
+    "chosen": {
+     "bo_target_r": 0.0,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "11:00",
+     "direction": "short"
+    },
+    "train_t": 1.51,
+    "test_trades": 55,
+    "test_avg_usd": -37.3,
+    "test_net_usd": -2053.0
+   },
+   {
+    "test_start": "2023-07-01",
+    "chosen": {
+     "bo_target_r": 0.0,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "11:00",
+     "direction": "short"
+    },
+    "train_t": 1.57,
+    "test_trades": 39,
+    "test_avg_usd": 47.9,
+    "test_net_usd": 1870.0
+   },
+   {
+    "test_start": "2024-01-01",
+    "chosen": {
+     "bo_target_r": 0.0,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "11:00",
+     "direction": "short"
+    },
+    "train_t": 1.69,
+    "test_trades": 44,
+    "test_avg_usd": -305.3,
+    "test_net_usd": -13431.0
+   },
+   {
+    "test_start": "2024-07-01",
+    "chosen": {
+     "bo_target_r": 0.0,
+     "tf": 15,
+     "entry_cutoff": "08:00",
+     "flat_time": "16:00",
+     "direction": "long"
+    },
+    "train_t": 1.75,
+    "test_trades": 64,
+    "test_avg_usd": 379.2,
+    "test_net_usd": 24268.0
+   },
+   {
+    "test_start": "2025-01-01",
+    "chosen": {
+     "bo_target_r": 1.5,
+     "tf": 15,
+     "entry_cutoff": "05:00",
+     "flat_time": "16:00",
+     "direction": "long"
+    },
+    "train_t": 2.01,
+    "test_trades": 44,
+    "test_avg_usd": -179.1,
+    "test_net_usd": -7881.0
+   },
+   {
+    "test_start": "2025-07-01",
+    "chosen": {
+     "bo_target_r": 1.5,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "16:00",
+     "direction": "long"
+    },
+    "train_t": 0.89,
+    "test_trades": 51,
+    "test_avg_usd": 183.0,
+    "test_net_usd": 9333.0
+   },
+   {
+    "test_start": "2026-01-01",
+    "chosen": {
+     "bo_target_r": 1.5,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "16:00",
+     "direction": "long"
+    },
+    "train_t": 0.9,
+    "test_trades": 40,
+    "test_avg_usd": -222.2,
+    "test_net_usd": -8889.0
+   },
+   {
+    "test_start": "2026-07-01",
+    "chosen": {
+     "bo_target_r": 1.5,
+     "tf": 5,
+     "entry_cutoff": "05:00",
+     "flat_time": "16:00",
+     "direction": "long"
+    },
+    "train_t": 0.68,
+    "test_trades": 32,
+    "test_avg_usd": -302.8,
+    "test_net_usd": -9691.0
+   }
+  ],
+  "summary": {
+   "trades": 496,
+   "days": 1198,
+   "net_usd": 15461.339285714457,
+   "pf": 1.022812278189994,
+   "win_rate": 0.47580645161290325,
+   "avg_usd": 31.172055011521085,
+   "avg_pts": 1.8086027505760542,
+   "avg_win": 2937.395202784503,
+   "avg_loss": -2606.784340659339,
+   "t_stat": 0.20795517838259112,
+   "sharpe": 0.09543054179230505,
+   "max_dd_usd": -40216.160714285725,
+   "exposure": 0.16579867411870025,
+   "long_n": 296,
+   "long_usd": 2543.660714285834,
+   "short_n": 200,
+   "short_usd": 12917.678571428623
+  }
+ }
+}

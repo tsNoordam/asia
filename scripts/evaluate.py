@@ -15,12 +15,11 @@ import dataclasses
 import json
 import pathlib
 
-import numpy as np
 import pandas as pd
 
 from asiabt.engine import Costs, Params, run
 from asiabt.metrics import by_year, summarize
-from asiabt.research import SPLITS, load_grid, period
+from asiabt.research import load_grid, period
 
 CFG = pathlib.Path("config/strategies.json")
 OUT = pathlib.Path("results/eval")

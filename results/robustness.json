@@ -1,0 +1,334 @@
+{
+ "B_fade_v3": {
+  "independent_data_tgt_2023_2025": {
+   "trades": 213,
+   "net_usd": 14638.875,
+   "avg_usd": 68.727,
+   "t_stat": 0.64,
+   "pf": 1.112,
+   "win_rate": 0.545,
+   "sharpe": 0.395,
+   "max_dd_usd": -17400.839
+  },
+  "tos_same_days_2023_2025": {
+   "trades": 199,
+   "net_usd": 33071.196,
+   "avg_usd": 166.187,
+   "t_stat": 1.527,
+   "pf": 1.304,
+   "win_rate": 0.578,
+   "sharpe": 0.897,
+   "max_dd_usd": -10121.018
+  },
+  "ES": {
+   "train": {
+    "trades": 202,
+    "net_usd": 6616.964,
+    "avg_usd": 32.757,
+    "t_stat": 0.463,
+    "pf": 1.083,
+    "win_rate": 0.49,
+    "sharpe": 0.271,
+    "max_dd_usd": -12917.321
+   },
+   "val": {
+    "trades": 101,
+    "net_usd": 598.393,
+    "avg_usd": 5.925,
+    "t_stat": 0.094,
+    "pf": 1.022,
+    "win_rate": 0.535,
+    "sharpe": 0.077,
+    "max_dd_usd": -9784.598
+   },
+   "oos": {
+    "trades": 163,
+    "net_usd": 15427.723,
+    "avg_usd": 94.649,
+    "t_stat": 1.097,
+    "pf": 1.226,
+    "win_rate": 0.534,
+    "sharpe": 0.77,
+    "max_dd_usd": -12451.964
+   }
+  },
+  "sessions": {
+   "R1 18-00": {
+    "train": {
+     "trades": 206,
+     "net_usd": 39896.411,
+     "avg_usd": 193.672,
+     "t_stat": 1.802,
+     "pf": 1.345,
+     "win_rate": 0.549,
+     "sharpe": 1.08,
+     "max_dd_usd": -16763.071
+    },
+    "val": {
+     "trades": 101,
+     "net_usd": 16838.036,
+     "avg_usd": 166.713,
+     "t_stat": 1.811,
+     "pf": 1.49,
+     "win_rate": 0.644,
+     "sharpe": 1.482,
+     "max_dd_usd": -5209.679
+    },
+    "oos": {
+     "trades": 161,
+     "net_usd": -13090.411,
+     "avg_usd": -81.307,
+     "t_stat": -0.48,
+     "pf": 0.918,
+     "win_rate": 0.46,
+     "sharpe": -0.318,
+     "max_dd_usd": -33629.554
+    }
+   },
+   "R2 18-02": {
+    "train": {
+     "trades": 160,
+     "net_usd": 35157.125,
+     "avg_usd": 219.732,
+     "t_stat": 1.729,
+     "pf": 1.379,
+     "win_rate": 0.512,
+     "sharpe": 1.037,
+     "max_dd_usd": -20174.607
+    },
+    "val": {
+     "trades": 88,
+     "net_usd": 8312.196,
+     "avg_usd": 94.457,
+     "t_stat": 0.899,
+     "pf": 1.23,
+     "win_rate": 0.591,
+     "sharpe": 0.743,
+     "max_dd_usd": -6623.107
+    },
+    "oos": {
+     "trades": 133,
+     "net_usd": -17317.625,
+     "avg_usd": -130.208,
+     "t_stat": -0.646,
+     "pf": 0.877,
+     "win_rate": 0.398,
+     "sharpe": -0.427,
+     "max_dd_usd": -33377.679
+    }
+   },
+   "R3 20-02": {
+    "train": {
+     "trades": 177,
+     "net_usd": 11005.5,
+     "avg_usd": 62.178,
+     "t_stat": 0.532,
+     "pf": 1.099,
+     "win_rate": 0.492,
+     "sharpe": 0.323,
+     "max_dd_usd": -27827.054
+    },
+    "val": {
+     "trades": 93,
+     "net_usd": 9902.839,
+     "avg_usd": 106.482,
+     "t_stat": 1.116,
+     "pf": 1.283,
+     "win_rate": 0.624,
+     "sharpe": 0.92,
+     "max_dd_usd": -7530.464
+    },
+    "oos": {
+     "trades": 134,
+     "net_usd": -1141.411,
+     "avg_usd": -8.518,
+     "t_stat": -0.044,
+     "pf": 0.991,
+     "win_rate": 0.463,
+     "sharpe": -0.029,
+     "max_dd_usd": -19824.75
+    }
+   }
+  },
+  "bootstrap_mean_usd_ci95": {
+   "train": [
+    -12.973017076976475,
+    405.6282745319002
+   ],
+   "val": [
+    -10.375353606787938,
+    346.06839197312746
+   ],
+   "oos": [
+    -407.38102262644026,
+    243.4102207187222
+   ]
+  }
+ },
+ "B_fade_v1": {
+  "independent_data_tgt_2023_2025": {
+   "trades": 241,
+   "net_usd": 13336.893,
+   "avg_usd": 55.34,
+   "t_stat": 0.541,
+   "pf": 1.087,
+   "win_rate": 0.544,
+   "sharpe": 0.318,
+   "max_dd_usd": -17567.161
+  },
+  "tos_same_days_2023_2025": {
+   "trades": 231,
+   "net_usd": 27279.321,
+   "avg_usd": 118.092,
+   "t_stat": 1.115,
+   "pf": 1.196,
+   "win_rate": 0.571,
+   "sharpe": 0.653,
+   "max_dd_usd": -15304.411
+  },
+  "ES": {
+   "train": {
+    "trades": 234,
+    "net_usd": 16097.768,
+    "avg_usd": 68.794,
+    "t_stat": 1.043,
+    "pf": 1.179,
+    "win_rate": 0.526,
+    "sharpe": 0.615,
+    "max_dd_usd": -11983.214
+   },
+   "val": {
+    "trades": 110,
+    "net_usd": 3653.661,
+    "avg_usd": 33.215,
+    "t_stat": 0.533,
+    "pf": 1.126,
+    "win_rate": 0.564,
+    "sharpe": 0.441,
+    "max_dd_usd": -6768.661
+   },
+   "oos": {
+    "trades": 183,
+    "net_usd": 16819.598,
+    "avg_usd": 91.91,
+    "t_stat": 1.106,
+    "pf": 1.212,
+    "win_rate": 0.546,
+    "sharpe": 0.735,
+    "max_dd_usd": -10578.348
+   }
+  },
+  "sessions": {
+   "R1 18-00": {
+    "train": {
+     "trades": 229,
+     "net_usd": 39302.536,
+     "avg_usd": 171.627,
+     "t_stat": 1.678,
+     "pf": 1.298,
+     "win_rate": 0.559,
+     "sharpe": 0.985,
+     "max_dd_usd": -18484.5
+    },
+    "val": {
+     "trades": 120,
+     "net_usd": 8284.625,
+     "avg_usd": 69.039,
+     "t_stat": 0.732,
+     "pf": 1.161,
+     "win_rate": 0.608,
+     "sharpe": 0.605,
+     "max_dd_usd": -9381.75
+    },
+    "oos": {
+     "trades": 181,
+     "net_usd": 3654.089,
+     "avg_usd": 20.188,
+     "t_stat": 0.118,
+     "pf": 1.02,
+     "win_rate": 0.486,
+     "sharpe": 0.079,
+     "max_dd_usd": -28726.768
+    }
+   },
+   "R2 18-02": {
+    "train": {
+     "trades": 178,
+     "net_usd": 17932.911,
+     "avg_usd": 100.747,
+     "t_stat": 0.824,
+     "pf": 1.155,
+     "win_rate": 0.494,
+     "sharpe": 0.486,
+     "max_dd_usd": -23821.232
+    },
+    "val": {
+     "trades": 99,
+     "net_usd": 4758.982,
+     "avg_usd": 48.071,
+     "t_stat": 0.452,
+     "pf": 1.105,
+     "win_rate": 0.586,
+     "sharpe": 0.374,
+     "max_dd_usd": -11667.071
+    },
+    "oos": {
+     "trades": 150,
+     "net_usd": -5878.714,
+     "avg_usd": -39.191,
+     "t_stat": -0.196,
+     "pf": 0.963,
+     "win_rate": 0.447,
+     "sharpe": -0.13,
+     "max_dd_usd": -26350.411
+    }
+   },
+   "R3 20-02": {
+    "train": {
+     "trades": 197,
+     "net_usd": -2806.161,
+     "avg_usd": -14.244,
+     "t_stat": -0.126,
+     "pf": 0.979,
+     "win_rate": 0.482,
+     "sharpe": -0.074,
+     "max_dd_usd": -34429.5
+    },
+    "val": {
+     "trades": 108,
+     "net_usd": 5403.929,
+     "avg_usd": 50.036,
+     "t_stat": 0.504,
+     "pf": 1.115,
+     "win_rate": 0.62,
+     "sharpe": 0.417,
+     "max_dd_usd": -11118.661
+    },
+    "oos": {
+     "trades": 157,
+     "net_usd": 5414.0,
+     "avg_usd": 34.484,
+     "t_stat": 0.191,
+     "pf": 1.036,
+     "win_rate": 0.51,
+     "sharpe": 0.127,
+     "max_dd_usd": -20487.036
+    }
+   }
+  },
+  "bootstrap_mean_usd_ci95": {
+   "train": [
+    -27.29082774485411,
+    370.47024524329487
+   ],
+   "val": [
+    -113.95636532737937,
+    252.35225446428592
+   ],
+   "oos": [
+    -316.77630722178293,
+    358.4959846093143
+   ]
+  }
+ }
+}

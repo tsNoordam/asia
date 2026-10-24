@@ -10,7 +10,6 @@ Writes results/data_validation.json and prints a summary. Checks:
 import json
 import pathlib
 
-import numpy as np
 import pandas as pd
 
 from asiabt.data import build_grid, flag_roll_days, load_minutes

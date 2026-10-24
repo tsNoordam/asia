@@ -34,8 +34,12 @@ def load_grid(path: str = "data/nq_tos_1m.parquet") -> DayGrid:
     return _GRID
 
 
+# Pooled TRAIN+VAL, used for model selection (never includes OOS).
+POOLED = {"trainval": ("2020-01-01", "2024-06-30")}
+
+
 def period(g: DayGrid, name: str) -> DayGrid:
-    a, b = SPLITS[name]
+    a, b = SPLITS[name] if name in SPLITS else POOLED[name]
     return g.subset((g.days >= a) & (g.days <= b))
 
 

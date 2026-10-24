@@ -17,7 +17,7 @@ of files inside sub-folders return 404 on the anonymous API), every weekly CSV
 is reduced in memory to minute bars (open, high, low, close, n_snapshots) and
 the result is written to data/nq_tos_1m.parquet.
 
-Usage:  python scripts/fetch_tos_kaggle.py
+Usage:  python scripts/fetch_tos_kaggle.py [--col /ES --out data/es_tos_1m.parquet]
 """
 import argparse
 import io
@@ -53,6 +53,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--zip", default="data/raw/tos_dataset.zip")
     ap.add_argument("--out", default="data/nq_tos_1m.parquet")
+    ap.add_argument("--col", default="/NQ", help="symbol column, e.g. /NQ or /ES")
     a = ap.parse_args()
     zp = pathlib.Path(a.zip)
     if not zp.exists():
@@ -66,7 +67,7 @@ def main():
     with zipfile.ZipFile(zp) as z:
         names = sorted(n for n in z.namelist() if "week ending" in n)
         for n in names:
-            bars = to_minutes(z.read(n))
+            bars = to_minutes(z.read(n), a.col)
             print(n, len(bars), flush=True)
             if len(bars):
                 parts.append(bars)

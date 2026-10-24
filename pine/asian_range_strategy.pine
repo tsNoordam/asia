@@ -1,0 +1,301 @@
+//@version=6
+// =============================================================================
+// Asian-Range Fade / Breakout — NQ / MNQ research strategy (v3 defaults)
+// -----------------------------------------------------------------------------
+// Research implementation of the strongest candidate found in this project:
+// fade a FAILED excursion beyond the completed Asian range (18:00-00:00 New
+// York), with an optional breakout mode and a range-width hybrid for comparison.
+//
+// EVIDENCE WARNING: in the Python study (docs/RESULTS.md) the default fade
+// configuration was positive in-sample (2020-01 .. 2024-06) but had NO edge in
+// the untouched 2024-07 .. 2026-10 out-of-sample period or in walk-forward
+// tests. This script is for paper trading and further research only.
+//
+// Design (mirrors asiabt/engine.py):
+//  * Session times are New York wall-clock (input `tz`), so DST is automatic.
+//    Trading day = 18:00 -> 17:00 NY (CME Globex).
+//  * The Asian range uses bars that OPEN in [rangeStart, rangeEnd); it is final
+//    once the first bar at/after rangeEnd starts -> no look-ahead.
+//  * Signals are evaluated only when a `sigTf`-minute signal bar (aggregated
+//    from chart bars, aligned to rangeEnd) has CLOSED. Orders are market orders
+//    filled by the broker emulator at the NEXT chart bar's open
+//    (process_orders_on_close = false). Use a 1-minute chart for the closest
+//    match to the Python backtest; a 5-minute chart with sigTf = 5 also works.
+//  * Daily ATR(14) = SMA of true range of the PREVIOUS 14 daily bars, fetched
+//    with request.security(..., expr[1], lookahead_on) -> non-repainting.
+//  * Stops = stop orders, targets = limit orders (strategy.exit bracket).
+//    Limit fills require 1 tick of trade-through (backtest_fill_limits_assumption).
+//  * All positions are closed at `flatTime`; nothing is held across sessions.
+//  * Costs: commission and slippage are set in strategy() below and editable in
+//    Settings > Properties. Defaults: $2.50 per contract per side ($5 round
+//    turn, NQ), 1 tick slippage on market/stop fills. For MNQ use ~$0.65/side.
+// Known differences vs. the Python engine (see docs/PINE.md): TradingView's
+// intrabar path assumption is not "stop first"; a next-open fill already beyond
+// the stop/target is not rejected but exits immediately; TradingView continuous
+// contracts (NQ1!) may be back-adjusted, changing ATR around rolls.
+// =============================================================================
+strategy("Asian Range Fade/Breakout [NQ research v3]", shorttitle = "AsiaRng v3", overlay = true,
+     pyramiding = 0, default_qty_type = strategy.fixed, default_qty_value = 1, initial_capital = 100000,
+     commission_type = strategy.commission.cash_per_contract, commission_value = 2.5,
+     slippage = 1, backtest_fill_limits_assumption = 1, process_orders_on_close = false,
+     calc_on_every_tick = false, calc_on_order_fills = false, max_bars_back = 2000,
+     max_labels_count = 200)
+
+// ----------------------------------------------------------------- inputs ---
+const string G_SES = "Sessions (New York time, HH:MM)"
+tz          = input.string("America/New_York", "Session timezone", group = G_SES,
+     tooltip = "IANA timezone for all session inputs. Keep America/New_York for CME index futures.")
+dayStartStr = input.string("18:00", "Trading-day start", group = G_SES, tooltip = "CME Globex day starts 18:00 NY.")
+rngStartStr = input.string("18:00", "Asian range start", group = G_SES)
+rngEndStr   = input.string("00:00", "Asian range end", group = G_SES,
+     tooltip = "Range = bars opening in [start, end). Tested: 00:00 (default), 02:00; range 20:00-02:00 also tested.")
+cutoffStr   = input.string("08:00", "Last entry (signal bar must close by)", group = G_SES)
+flatStr     = input.string("11:00", "Flatten all positions at", group = G_SES)
+sigTf       = input.int(5, "Signal bar length (minutes)", minval = 1, group = G_SES,
+     tooltip = "Signals use completed bars of this length aligned to the range end. Must be a multiple of the chart timeframe.")
+
+const string G_MODE = "Mode and risk"
+mode      = input.string("Fade", "Strategy mode", options = ["Fade", "Breakout", "Hybrid"], group = G_MODE,
+     tooltip = "Fade = mean reversion after a failed break (default, strongest candidate). Breakout = continuation. Hybrid = Breakout if range/ATR < threshold, else Fade.")
+dirOpt    = input.string("Both", "Direction", options = ["Both", "Long only", "Short only"], group = G_MODE)
+maxTrades = input.int(2, "Max trades per session", minval = 1, maxval = 5, group = G_MODE)
+hybridThr = input.float(0.207, "Hybrid: range/ATR threshold", step = 0.01, group = G_MODE)
+
+const string G_FADE = "Fade (mean reversion)"
+minExt   = input.float(0.10, "Min excursion beyond range", step = 0.005, group = G_FADE,
+     tooltip = "Excursion = furthest point beyond the range since the range closed (or since the last trade), in units below.")
+maxExt   = input.float(0.225, "Max excursion (breakout-strength cap)", step = 0.005, group = G_FADE,
+     tooltip = "Larger excursions are treated as genuine breakouts and not faded. 99 = no cap (v1).")
+extUnit  = input.string("ATR", "Excursion unit", options = ["ATR", "Range width"], group = G_FADE)
+stopBuf  = input.float(0.05, "Stop buffer beyond extreme (x ATR)", step = 0.01, group = G_FADE)
+fdTarget = input.string("Opposite boundary", "Target", options = ["Opposite boundary", "Midpoint", "R multiple"], group = G_FADE)
+fdTgtR   = input.float(1.0, "Target R (if R multiple)", step = 0.25, group = G_FADE)
+
+const string G_BO = "Breakout"
+boBuf    = input.float(0.0, "Close beyond range by (x ATR)", step = 0.01, group = G_BO)
+boStopT  = input.string("ATR", "Stop", options = ["Opposite boundary", "Midpoint", "ATR"], group = G_BO)
+boStopA  = input.float(0.5, "Stop distance (x ATR, if ATR)", step = 0.05, group = G_BO)
+boTgtR   = input.float(1.5, "Target R (0 = time exit only)", step = 0.25, group = G_BO)
+
+const string G_FLT = "Day filters"
+minRA    = input.float(0.0, "Min range/ATR", step = 0.01, group = G_FLT)
+maxRA    = input.float(99.0, "Max range/ATR", step = 0.01, group = G_FLT)
+trendOpt = input.string("None", "Trend filter (prev close vs daily SMA20)", options = ["None", "With trend", "Against trend"], group = G_FLT)
+minCov   = input.float(0.9, "Min share of range bars present", minval = 0, maxval = 1, step = 0.05, group = G_FLT)
+
+const string G_VIS = "Display"
+showRange = input.bool(true, "Plot Asian range", group = G_VIS)
+showSig   = input.bool(true, "Plot signal markers", group = G_VIS)
+showTable = input.bool(true, "Show diagnostics table", group = G_VIS)
+
+// ----------------------------------------------------------- helpers -------
+// Minutes since the trading-day start (18:00) for a "HH:MM" string.
+dayStartH = int(str.tonumber(array.get(str.split(dayStartStr, ":"), 0)))
+f_parse(string s) =>
+    parts = str.split(s, ":")
+    h = int(str.tonumber(array.get(parts, 0)))
+    m = int(str.tonumber(array.get(parts, 1)))
+    ((h - dayStartH + 24) % 24) * 60 + m
+
+f_offNow(int t) =>
+    ((hour(t, tz) - dayStartH + 24) % 24) * 60 + minute(t, tz)
+
+rs   = f_parse(rngStartStr)
+re   = f_parse(rngEndStr)
+cut  = f_parse(cutoffStr)
+flat = f_parse(flatStr)
+chartMin = int(timeframe.in_seconds() / 60)
+
+if barstate.isfirst
+    if not (rs < re and re <= cut and cut <= flat)
+        runtime.error("Session inputs must satisfy range start < range end <= last entry <= flatten time (within the 18:00-17:00 trading day).")
+    if not timeframe.isintraday or sigTf % chartMin != 0
+        runtime.error("Use an intraday chart whose timeframe divides the signal bar length (e.g. 1m or 5m chart, sigTf = 5).")
+
+// Previous-day values: [1] + lookahead_on returns only completed daily bars.
+atrD   = request.security(syminfo.tickerid, "D", ta.sma(ta.tr(true), 14)[1], lookahead = barmerge.lookahead_on)
+smaD   = request.security(syminfo.tickerid, "D", ta.sma(close, 20)[1], lookahead = barmerge.lookahead_on)
+pCloseD = request.security(syminfo.tickerid, "D", close[1], lookahead = barmerge.lookahead_on)
+
+off    = f_offNow(time)
+offEnd = off + chartMin               // minute offset at which this bar closes
+inDay  = off < 23 * 60                // excludes the 17:00-18:00 maintenance halt
+newDay = na(off[1]) or off < off[1]
+
+// ------------------------------------------------------------ state --------
+var float rHi = na
+var float rLo = na
+var int   rBars = 0
+var bool  rangeDone = false
+var bool  dayOK = false
+var string dayMode = "Fade"
+var float hiSince = na
+var float loSince = na
+var float sigHi = na
+var float sigLo = na
+var int   nTrades = 0
+var float trStop = na
+var float trTgt = na
+var float trTgtR = na              // R multiple to re-anchor on the fill price (na = fixed level)
+var int   trSide = 0
+var float dayRatio = na
+
+if newDay
+    // Never carry anything into a new session (should already be flat).
+    if strategy.position_size != 0
+        strategy.close_all(comment = "Safety: new session")
+    else
+        strategy.cancel_all()
+    rHi := na
+    rLo := na
+    rBars := 0
+    rangeDone := false
+    dayOK := false
+    hiSince := na
+    loSince := na
+    sigHi := na
+    sigLo := na
+    nTrades := 0
+    dayRatio := na
+
+// 1) Build the range from bars that open inside [rs, re).
+if inDay and off >= rs and off < re
+    rHi := na(rHi) ? high : math.max(rHi, high)
+    rLo := na(rLo) ? low : math.min(rLo, low)
+    rBars += 1
+
+// 2) Finalise once the first bar at/after range end opens (uses no future data).
+if inDay and not rangeDone and off >= re and not na(rHi)
+    rangeDone := true
+    W = rHi - rLo
+    expected = (re - rs) / chartMin
+    dayRatio := atrD > 0 ? W / atrD : na
+    dayOK := atrD > 0 and W > 0 and rBars >= minCov * expected and dayRatio >= minRA and dayRatio <= maxRA
+    dayMode := mode == "Hybrid" ? (dayRatio < hybridThr ? "Breakout" : "Fade") : mode
+
+// Trend and direction permissions (known before the session starts).
+trendUp   = not na(smaD) and pCloseD > smaD
+trendDn   = not na(smaD) and pCloseD < smaD
+allowLong  = dirOpt != "Short only" and (trendOpt == "None" or (trendOpt == "With trend" ? not trendDn : not trendUp))
+allowShort = dirOpt != "Long only" and (trendOpt == "None" or (trendOpt == "With trend" ? not trendUp : not trendDn))
+
+// 3) Aggregate chart bars into signal bars aligned to the range end.
+flatNow = strategy.position_size == 0
+scanning = inDay and rangeDone and dayOK and off >= re and offEnd <= cut and nTrades < maxTrades and flatNow
+// A signal bar only counts if it was observed from its first chart bar, so
+// partial bars after an exit are skipped (as in the Python engine).
+if not scanning
+    sigHi := na
+    sigLo := na
+else if (off - re) % sigTf == 0
+    sigHi := high
+    sigLo := low
+else if not na(sigHi)
+    sigHi := math.max(sigHi, high)
+    sigLo := math.min(sigLo, low)
+sigClose = scanning and not na(sigHi) and (offEnd - re) % sigTf == 0
+
+bool longSig = false
+bool shortSig = false
+float sigStop = na
+float sigTgt = na
+
+if sigClose
+    hiSince := na(hiSince) ? sigHi : math.max(hiSince, sigHi)
+    loSince := na(loSince) ? sigLo : math.min(loSince, sigLo)
+    sigHi := na
+    sigLo := na
+    mid = (rHi + rLo) / 2
+    if dayMode == "Fade"
+        unit  = extUnit == "ATR" ? atrD : (rHi - rLo)
+        extUp = hiSince - rHi
+        extDn = rLo - loSince
+        inside = close < rHi and close > rLo
+        upOk = allowShort and extUp > 0 and extUp >= minExt * unit and extUp <= maxExt * unit
+        dnOk = allowLong and extDn > 0 and extDn >= minExt * unit and extDn <= maxExt * unit
+        // SHORT: price swept above the range, then a signal bar closed back inside.
+        if upOk and inside
+            shortSig := true
+            sigStop := hiSince + stopBuf * atrD
+            sigTgt := fdTarget == "Opposite boundary" ? rLo : fdTarget == "Midpoint" ? mid : na
+        // LONG: price swept below the range, then a signal bar closed back inside.
+        else if dnOk and inside
+            longSig := true
+            sigStop := loSince - stopBuf * atrD
+            sigTgt := fdTarget == "Opposite boundary" ? rHi : fdTarget == "Midpoint" ? mid : na
+        trTgtR := fdTarget == "R multiple" ? fdTgtR : na
+    else
+        // LONG: signal bar closes above range high (+ buffer). SHORT: below range low.
+        if allowLong and close > rHi + boBuf * atrD
+            longSig := true
+            sigStop := boStopT == "Opposite boundary" ? rLo : boStopT == "Midpoint" ? mid : close - boStopA * atrD
+        else if allowShort and close < rLo - boBuf * atrD
+            shortSig := true
+            sigStop := boStopT == "Opposite boundary" ? rHi : boStopT == "Midpoint" ? mid : close + boStopA * atrD
+        sigTgt := na
+        trTgtR := boTgtR > 0 ? boTgtR : na
+
+    // Reject signals whose stop/target is already on the wrong side of the
+    // signal close (proxy for the unknown next open).
+    if longSig and (sigStop >= close or (not na(sigTgt) and sigTgt <= close))
+        longSig := false
+    if shortSig and (sigStop <= close or (not na(sigTgt) and sigTgt >= close))
+        shortSig := false
+
+    if longSig or shortSig
+        trSide := longSig ? 1 : -1
+        trStop := sigStop
+        trTgt := sigTgt
+        nTrades += 1
+        hiSince := na
+        loSince := na
+        id = longSig ? "L" : "S"
+        strategy.entry(id, longSig ? strategy.long : strategy.short, comment = dayMode + (longSig ? " long" : " short"))
+        // Provisional bracket from the signal close; re-anchored on the fill below.
+        provTgt = na(trTgtR) ? trTgt : close + trSide * trTgtR * math.abs(close - trStop)
+        strategy.exit(id + "x", from_entry = id, stop = trStop, limit = provTgt,
+             comment_loss = "Stop", comment_profit = "Target")
+        alert(syminfo.ticker + " " + dayMode + (longSig ? " LONG" : " SHORT") + " next open | stop " +
+             str.tostring(trStop, format.mintick) + " | target " + (na(provTgt) ? "time exit" : str.tostring(provTgt, format.mintick)),
+             alert.freq_once_per_bar_close)
+
+// 4) Re-anchor R-multiple targets on the actual average fill price.
+if strategy.position_size != 0 and not na(trTgtR)
+    ep = strategy.position_avg_price
+    id = strategy.position_size > 0 ? "L" : "S"
+    strategy.exit(id + "x", from_entry = id, stop = trStop, limit = ep + trSide * trTgtR * math.abs(ep - trStop),
+         comment_loss = "Stop", comment_profit = "Target")
+
+// 5) Session deadline: market exit filled at the open of the flat-time bar.
+if inDay and offEnd >= flat and strategy.position_size != 0
+    strategy.close_all(comment = "Time exit")
+    alert(syminfo.ticker + " time exit", alert.freq_once_per_bar_close)
+// Drop any unfilled entry once flat after the deadline (never in the same bar
+// as close_all, which would cancel the exit order itself).
+if inDay and offEnd >= flat and strategy.position_size == 0
+    strategy.cancel_all()
+
+// ----------------------------------------------------------- plotting -------
+showLvls = showRange and inDay and not na(rHi) and off < flat
+plot(showLvls ? rHi : na, "Asian high", color.new(color.orange, 0), 2, plot.style_linebr)
+plot(showLvls ? rLo : na, "Asian low", color.new(color.orange, 0), 2, plot.style_linebr)
+plot(showLvls and rangeDone ? (rHi + rLo) / 2 : na, "Asian mid", color.new(color.gray, 30), 1, plot.style_linebr)
+bgcolor(showRange and inDay and off >= rs and off < re ? color.new(color.orange, 92) : na, title = "Range window")
+plot(strategy.position_size != 0 ? trStop : na, "Active stop", color.new(color.red, 0), 1, plot.style_linebr)
+plotshape(showSig and longSig, "Long signal", shape.triangleup, location.belowbar, color.new(color.teal, 0), size = size.small)
+plotshape(showSig and shortSig, "Short signal", shape.triangledown, location.abovebar, color.new(color.fuchsia, 0), size = size.small)
+
+var table diag = table.new(position.top_right, 2, 6, bgcolor = color.new(color.black, 80), border_width = 1)
+if showTable and barstate.islast
+    table.cell(diag, 0, 0, "Mode", text_color = color.white)
+    table.cell(diag, 1, 0, dayMode, text_color = color.white)
+    table.cell(diag, 0, 1, "Range H/L", text_color = color.white)
+    table.cell(diag, 1, 1, str.tostring(rHi, format.mintick) + " / " + str.tostring(rLo, format.mintick), text_color = color.white)
+    table.cell(diag, 0, 2, "Range / ATR14", text_color = color.white)
+    table.cell(diag, 1, 2, str.tostring(dayRatio, "#.###"), text_color = color.white)
+    table.cell(diag, 0, 3, "Day eligible", text_color = color.white)
+    table.cell(diag, 1, 3, dayOK ? "yes" : "no", text_color = color.white)
+    table.cell(diag, 0, 4, "Trades today", text_color = color.white)
+    table.cell(diag, 1, 4, str.tostring(nTrades) + " / " + str.tostring(maxTrades), text_color = color.white)
+    table.cell(diag, 0, 5, "ATR14 (prev days)", text_color = color.white)
+    table.cell(diag, 1, 5, str.tostring(atrD, format.mintick), text_color = color.white)
