@@ -1,0 +1,66 @@
+{
+ "name": "B0_no_trade",
+ "params": null,
+ "base": {
+  "train": {
+   "trades": 0,
+   "days": 727,
+   "net_usd": 0.0,
+   "pf": NaN,
+   "win_rate": NaN,
+   "avg_usd": NaN,
+   "avg_win": NaN,
+   "avg_loss": NaN,
+   "t_stat": NaN,
+   "sharpe": NaN,
+   "max_dd_usd": 0.0,
+   "exposure": 0.0,
+   "avg_pts": NaN
+  },
+  "val": {
+   "trades": 0,
+   "days": 370,
+   "net_usd": 0.0,
+   "pf": NaN,
+   "win_rate": NaN,
+   "avg_usd": NaN,
+   "avg_win": NaN,
+   "avg_loss": NaN,
+   "t_stat": NaN,
+   "sharpe": NaN,
+   "max_dd_usd": 0.0,
+   "exposure": 0.0,
+   "avg_pts": NaN
+  },
+  "oos": {
+   "trades": 0,
+   "days": 570,
+   "net_usd": 0.0,
+   "pf": NaN,
+   "win_rate": NaN,
+   "avg_usd": NaN,
+   "avg_win": NaN,
+   "avg_loss": NaN,
+   "t_stat": NaN,
+   "sharpe": NaN,
+   "max_dd_usd": 0.0,
+   "exposure": 0.0,
+   "avg_pts": NaN
+  },
+  "full": {
+   "trades": 0,
+   "days": 1667,
+   "net_usd": 0.0,
+   "pf": NaN,
+   "win_rate": NaN,
+   "avg_usd": NaN,
+   "avg_win": NaN,
+   "avg_loss": NaN,
+   "t_stat": NaN,
+   "sharpe": NaN,
+   "max_dd_usd": 0.0,
+   "exposure": 0.0,
+   "avg_pts": NaN
+  }
+ }
+}

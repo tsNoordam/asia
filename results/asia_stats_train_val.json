@@ -1,0 +1,38 @@
+{
+ "R1 18:00-00:00": {
+  "sessions": 1055,
+  "median_width_atr": 0.234,
+  "break_before_08": 0.938,
+  "break_before_11": 0.991,
+  "first_break_up_share": 0.557,
+  "reentry_after_first_break": 0.973,
+  "both_sides_broken_by_11": 0.517,
+  "ext_first_side_median_widths": 1.004,
+  "ext_ge_1_width_share": 0.506,
+  "close11_outside_on_first_break_side": 0.495
+ },
+ "R2 18:00-02:00": {
+  "sessions": 1054,
+  "median_width_atr": 0.261,
+  "break_before_08": 0.898,
+  "break_before_11": 0.988,
+  "first_break_up_share": 0.569,
+  "reentry_after_first_break": 0.969,
+  "both_sides_broken_by_11": 0.475,
+  "ext_first_side_median_widths": 0.887,
+  "ext_ge_1_width_share": 0.456,
+  "close11_outside_on_first_break_side": 0.5
+ },
+ "R3 20:00-02:00": {
+  "sessions": 1060,
+  "median_width_atr": 0.218,
+  "break_before_08": 0.947,
+  "break_before_11": 0.996,
+  "first_break_up_share": 0.568,
+  "reentry_after_first_break": 0.972,
+  "both_sides_broken_by_11": 0.555,
+  "ext_first_side_median_widths": 1.149,
+  "ext_ge_1_width_share": 0.562,
+  "close11_outside_on_first_break_side": 0.501
+ }
+}

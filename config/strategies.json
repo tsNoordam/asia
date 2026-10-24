@@ -1,0 +1,153 @@
+{
+  "_comment": "Frozen strategy definitions. Keys are asiabt.engine.Params fields; omitted fields use the defaults in engine.py. Versions are appended, never edited, so every reported number can be regenerated.",
+  "baselines": {
+    "B0_no_trade": null,
+    "B1_simple_breakout": {
+      "mode": "breakout",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "bo_stop": "opposite"
+    },
+    "B2_simple_fade": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.0,
+      "fd_target": "mid"
+    },
+    "B3_timed_long_00_11": {
+      "mode": "timed",
+      "range_end": "00:00",
+      "entry_cutoff": "11:00",
+      "flat_time": "11:00",
+      "timed_side": 1
+    },
+    "B4_eu_open_long_00_04": {
+      "mode": "timed",
+      "range_end": "00:00",
+      "entry_cutoff": "04:00",
+      "flat_time": "04:00",
+      "timed_side": 1
+    },
+    "B5_timed_long_02_16": {
+      "mode": "timed",
+      "range_end": "02:00",
+      "entry_cutoff": "16:00",
+      "flat_time": "16:00",
+      "timed_side": 1
+    }
+  },
+  "candidates": {
+    "A_breakout_rep": {
+      "mode": "breakout",
+      "range_start": "18:00",
+      "range_end": "02:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "16:00",
+      "tf": 15,
+      "bo_buffer_atr": 0.0,
+      "bo_stop": "atr",
+      "bo_stop_atr": 0.5,
+      "bo_target_r": 1.5,
+      "direction": "long"
+    },
+    "A_breakout_both": {
+      "mode": "breakout",
+      "range_start": "18:00",
+      "range_end": "02:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "16:00",
+      "tf": 15,
+      "bo_buffer_atr": 0.0,
+      "bo_stop": "atr",
+      "bo_stop_atr": 0.5,
+      "bo_target_r": 1.5,
+      "direction": "both"
+    },
+    "B_fade_v1": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 99.0,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "both",
+      "max_trades": 1
+    },
+    "C_hybrid_v1": {
+      "mode": "hybrid",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 99.0,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "both",
+      "max_trades": 1,
+      "hybrid_thr": 0.207,
+      "bo_stop": "opposite",
+      "bo_target_r": 0.0,
+      "bo_buffer_atr": 0.0
+    },
+    "B_fade_v1_long_only": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 99.0,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "long",
+      "max_trades": 1
+    },
+    "B_fade_v1_short_only": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 99.0,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "short",
+      "max_trades": 1
+    },
+    "B_fade_v2": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 0.225,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "both",
+      "max_trades": 1
+    }
+  }
+}
