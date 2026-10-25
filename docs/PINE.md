@@ -1,12 +1,35 @@
 # Pine Script v6 strategy: `pine/asian_range_strategy.pine`
 
-## Verification status
+## Verification status (updated by the integrity audit, 2026-10-25)
 
 | Check | Status |
 |---|---|
-| TradingView in-editor static analysis (syntax, types, undeclared identifiers, argument checks) | **Passed: 0 errors, 0 warnings over all 302 lines.** Run headlessly with `scripts/lint_pine_tradingview.js`. A control copy with an undeclared identifier appended at the end was flagged, which shows the analyser covered the whole file. The only earlier warning (short title > 10 characters) was fixed |
-| Full compile ("Add to chart") and Strategy Tester run | **Not verified.** Both need a TradingView login, which this environment doesn't have. Runtime errors such as the `runtime.error` input checks, request limits or `max_bars_back` can only show up there |
-| Equivalence with the Python engine | **Not verified numerically.** The logic mirrors `asiabt/engine.py` (differences below), but no TradingView trade list was exported to compare against |
+| TradingView in-editor static analysis | **Passed: 0 errors, 0 warnings over all 328 lines** after the audit changes (`scripts/lint_pine_tradingview.js`; a planted undeclared identifier at the end is flagged, so the whole file was analysed). **This is not a compile.** |
+| Full compile ("Add to chart") | **NOT VERIFIED.** It needs a TradingView login, which this environment doesn't have |
+| Strategy Tester run | **NOT VERIFIED** (same reason) |
+| Python ↔ Pine trade-level parity | **NOT VERIFIED.** No TradingView trade list exists yet. The comparison tooling is built and unit-tested (see the protocol below) |
+| Resolution component of parity (measured in Python) | Done: on 5-minute bars (a 5-min chart) all 472 v3 signals are identical to 1-minute execution. 13 exit reasons differ, costing −$4.4k in total (−$9/trade), mostly in VAL (`results/parity/resolution.json`) |
+
+## Parity protocol (to be run by a human with a TradingView account)
+
+1. **Same inputs.** Chart `CME_MINI:NQ1!`, **1-minute**, timezone *America/New_York*, continuous
+   contract **unadjusted** (turn B-ADJ off) to match the unadjusted TOS data. Default inputs
+   (= `B_fade_v3r1`). Properties: commission $2.50/side, slippage 1 tick, limit-fill threshold
+   1 tick, Bar Magnifier off for the first run (and on for a second run).
+2. **Date range.** A window where TradingView has 1-minute history and the Python data overlaps,
+   e.g. the most recent 2–3 months up to 2026-10-23.
+3. **Export.** Strategy Tester → *List of trades* → Export (CSV).
+4. **Python side.** `python scripts/evaluate.py B_fade_v3r1` writes `results/eval/trades_B_fade_v3r1.csv`.
+5. **Compare.**
+   `python scripts/parity_compare.py --tv <export.csv> --py results/eval/trades_B_fade_v3r1.csv --start <first day> --end <last day>`
+   This writes `results/parity/report.json` with matched, unmatched and classified pairs.
+6. **Classify and resolve.**
+   * `adjustment`: the chart was back-adjusted. Redo the run unadjusted.
+   * `resolution` / `intrabar_exit`: expected from TradingView's intrabar path assumption. Quantify it; it isn't a defect.
+   * `price_diff` or unmatched trades: check the bar data first (snapshot vs exchange OHLC, see
+     AUDIT.md §3), then the code. Any remaining logic mismatch is an **implementation defect** and gets a test.
+7. **Record the outcome** in this file: matched %, P&L difference, and a list of defects found.
+   Only then can parity be marked as verified.
 
 ## How to use
 
@@ -85,3 +108,5 @@ exit. Order-fill alerts can also be created from the Strategy's alert dialog.
 | ATR | SMA(14) of true range on a back-adjusted daily series | `ta.sma(ta.tr(true), 14)` on TradingView daily bars. Results depend on the continuous-contract adjustment setting (B-ADJ) |
 | Data | 3-second snapshot bars (TOS) | Exchange data. The independent-data check in RESULTS shows the fade's results **fall** on true OHLC bars |
 | Volume / options | Not used | Not used. No IV or options data, and no proxy for one |
+| Two-sided ambiguous fade signal | `fd_both_sides`: `latest` in r1 configs (fade the side with the more recent extreme, 1-min resolution; same minute → skip). Frozen v1/v3 use `legacy_short_first` | Input *If both sides qualify*, default *Latest extreme*, timed at chart-bar resolution (on a 5-min chart more cases become "same bar" → skipped). Never triggered on 2020–2026 data for v1/v2/v3 |
+| Signal bar after an exit | Skips the signal bar that contains the exit minute | Same since the audit (`exitedNow`) |

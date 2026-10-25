@@ -3,8 +3,13 @@
 Splits (fixed BEFORE any candidate was tuned):
   TRAIN  2020-01-27 .. 2022-12-31  development (COVID crash, 2021 bull, 2022 bear)
   VAL    2023-01-01 .. 2024-06-30  parameter selection / model choice
-  OOS    2024-07-01 .. 2026-10-23  untouched test (opened once per review cycle,
-                                    never used to choose parameters)
+  OOS    2024-07-01 .. 2026-10-23  PREVIOUSLY INSPECTED out-of-sample period
+                                    ("OOS-I"). It was not used to choose parameters,
+                                    but its results were viewed at v1 and after
+                                    each improvement cycle (and full-sample baseline
+                                    smoke tests were run before the split was fixed),
+                                    so it is no longer a pristine holdout. Do not use
+                                    it to select parameters, filters or strategies.
 """
 from __future__ import annotations
 

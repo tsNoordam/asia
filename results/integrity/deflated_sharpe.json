@@ -1,0 +1,67 @@
+{
+ "trials_in_variance_estimate": 2592,
+ "var_daily_sr_across_trials": 0.00042791415899106987,
+ "sd_annualised_sr_across_trials": 0.32838143684707516,
+ "strategies": {
+  "B_fade_v1": {
+   "T_days": 1097,
+   "sr_daily": 0.055139484195621355,
+   "sr_annualised": 0.8753121756119429,
+   "skew": 0.9277822871428261,
+   "kurtosis": 11.270652020935948,
+   "psr_vs_0": 0.9690033518725933,
+   "dsr": {
+    "1": {
+     "expected_max_sr_annualised": 0.0,
+     "dsr": 0.9690033518725933
+    },
+    "10": {
+     "expected_max_sr_annualised": 0.5170688526526256,
+     "dsr": 0.7775209868684632
+    },
+    "100": {
+     "expected_max_sr_annualised": 0.8310030141587565,
+     "dsr": 0.5376345360976681
+    },
+    "1000": {
+     "expected_max_sr_annualised": 1.0689214797649635,
+     "dsr": 0.33987128675478695
+    },
+    "7000": {
+     "expected_max_sr_annualised": 1.2388355981211316,
+     "dsr": 0.21913853833538183
+    }
+   }
+  },
+  "B_fade_v3": {
+   "T_days": 1097,
+   "sr_daily": 0.07233291102076304,
+   "sr_annualised": 1.1482493649978132,
+   "skew": 1.425988866309921,
+   "kurtosis": 15.063692415069836,
+   "psr_vs_0": 0.9938437862242219,
+   "dsr": {
+    "1": {
+     "expected_max_sr_annualised": 0.0,
+     "dsr": 0.9938437862242219
+    },
+    "10": {
+     "expected_max_sr_annualised": 0.5170688526526256,
+     "dsr": 0.9155746604561777
+    },
+    "100": {
+     "expected_max_sr_annualised": 0.8310030141587565,
+     "dsr": 0.7553941619256928
+    },
+    "1000": {
+     "expected_max_sr_annualised": 1.0689214797649635,
+     "dsr": 0.5686453316071813
+    },
+    "7000": {
+     "expected_max_sr_annualised": 1.2388355981211316,
+     "dsr": 0.4217305330767369
+    }
+   }
+  }
+ }
+}

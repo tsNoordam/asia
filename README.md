@@ -7,7 +7,7 @@ MNQ is covered as the lower-notional version.
 > **Bottom line.** No candidate has a robust, validated edge after costs.
 > * **Asian-range breakouts** lose money or just reflect market beta.
 > * **A fade of failed breakouts** (mean reversion) was the strongest candidate in-sample:
->   final v3 TRAIN t = 1.80, VAL t = 1.81. It **failed the untouched out-of-sample period**
+>   final v3 TRAIN t = 1.80, VAL t = 1.81. It **failed the out-of-sample period**
 >   (Jul 2024 – Oct 2026: −$81/trade, t = −0.48) and a rolling walk-forward (−$32/trade).
 >   It is also weaker on an independent true-OHLC dataset.
 >
@@ -29,6 +29,8 @@ MNQ is covered as the lower-notional version.
 | 9 | Code-quality and evidence-quality scores | [below](#scores) |
 | 10 | Known weaknesses, data subscriptions, next steps | [below](#known-weaknesses) |
 | – | Data sources, validation, sessions, execution model | [`docs/DATA.md`](docs/DATA.md) |
+| – | Quantitative integrity audit: defects, fixes, before/after, parity status, data plan | [`docs/AUDIT.md`](docs/AUDIT.md) |
+| – | Pre-registered protocol for the independent pre-2020 test and future research | [`docs/PREREGISTRATION.md`](docs/PREREGISTRATION.md) |
 
 ## Final candidate (v3), in one paragraph
 
@@ -40,7 +42,7 @@ excursion at the next bar's open. The stop sits just beyond the excursion extrem
 and the target is the opposite side of the range. Flatten at 11:00. At most 2 trades per
 session, long and short.
 
-| NQ, 1 contract, base costs | TRAIN 2020-01 → 2022-12 | VAL 2023-01 → 2024-06 | **OOS 2024-07 → 2026-10** |
+| NQ, 1 contract, base costs | TRAIN 2020-01 → 2022-12 | VAL 2023-01 → 2024-06 | **OOS 2024-07 → 2026-10 (previously inspected)** |
 |---|---|---|---|
 | Trades | 206 | 101 | 161 |
 | Net profit | $39,896 | $16,838 | **−$13,090** |
@@ -72,7 +74,7 @@ public and downloaded anonymously.
 
 ```bash
 pip install -e ".[test]"
-python -m pytest -q                                   # 13 unit/property tests
+python -m pytest -q                                   # 34 unit/property tests
 
 # 1. Data (≈0.8 GB zip from Kaggle, then reduced to 1-minute bars)
 python scripts/fetch_tos_kaggle.py                    # -> data/nq_tos_1m.parquet  (primary, /NQ)
@@ -90,6 +92,10 @@ python scripts/walk_forward.py                        # rolling 24m/6m walk-forw
 python scripts/robustness.py                          # independent data, /ES, session defs, bootstrap
 python scripts/make_report.py                         # -> docs/RESULTS_TABLES.md
 
+# 2b. Integrity audit (docs/AUDIT.md §8 lists every command)
+python scripts/integrity_metrics.py && python scripts/integrity_ambiguity.py && python scripts/integrity_data_exec.py
+python scripts/integrity_before_after.py && python scripts/deflated_sharpe.py && python scripts/parity_resolution.py
+
 # 3. Pine static check (optional; needs Node + Playwright with Chromium)
 NODE_PATH=$(npm root -g) node scripts/lint_pine_tradingview.js pine/asian_range_strategy.pine
 ```
@@ -100,39 +106,35 @@ numbers reproduce, while "full sample" numbers grow as data is added.
 
 ## Scores
 
-Scored with the rubric from the brief. Each point is backed by evidence that was actually
-produced. Anything unverified is marked.
+Scores were revised after the **quantitative integrity audit** ([`docs/AUDIT.md`](docs/AUDIT.md), 2026-10-25).
+The scores from before the audit (code 8.5, evidence 7.5) are kept in the git history at `50f822f`.
 
-### Code quality: **8.5 / 10**
+* **Code quality: 9.0 / 10.** 34 tests. Two defects were found and fixed with reproducing tests:
+  * a drawdown baseline error (1 of 52 values changed);
+  * a two-sided fade short bias (never triggered for v1/v2/v3).
 
-| Item | Score | Reason |
-|---|---|---|
-| Correctness and compilability | 1.5 / 2 | Python: 13 passing tests, deterministic, reproduces every reported number from scripts. Pine: **passes TradingView's in-editor static analyser with 0 errors / 0 warnings** (verified headlessly, with a positive control). A full compile ("Add to chart") and a Strategy Tester run **were not possible without a TradingView login and are unverified** |
-| Execution and risk-management logic | 1.5 / 2 | Next-bar-open fills, stop-first intrabar rule, gap-through stops, limit trade-through, order rejection, time stop, per-session trade cap, costs/slippage, MNQ economics. Pine mirrors this with documented differences (intrabar path, rejection proxy) that haven't been reconciled numerically |
-| Repainting and look-ahead safeguards | 2 / 2 | The range is final only after its window closes. Signals use completed bars only. Daily features are lagged one day and roll back-adjustment can't leak the future. Property tests perturb all future bars and check that earlier trades and features don't change. Pine uses the documented `expr[1]` + `lookahead_on` idiom and `calc_on_every_tick = false` |
-| Readability and configurability | 2 / 2 | Small package, one `Params` dataclass, frozen JSON configs, every Pine input documented with tooltips |
-| Diagnostics, testing and documentation | 1.5 / 2 | Data-validation report, trade lists, exit reasons, MAE/MFE, a Pine diagnostics table and alerts, full docs. Missing: a Pine-vs-Python trade-by-trade parity test |
+  Frozen results reproduce bit-for-bit. **Pine compile, Strategy Tester run and Python/Pine
+  trade parity remain unverified** (they need a TradingView login). The static analysis passes,
+  and the parity tooling is built and tested.
+* **Evidence quality: 7.0 / 10** (down from 7.5).
+  * The 2024-07+ OOS period was previously inspected, so it is not a holdout.
+  * Snapshot-built bars change which trades occur.
+  * Every day-block bootstrap CI of mean daily P&L includes 0.
+  * The Deflated Sharpe Ratio of v3's in-sample Sharpe is below 0.95 once more than ~5
+    independent trials are assumed. About 7,000 configurations were explored.
+  * A genuinely independent pre-2020 test is pre-registered ([`docs/PREREGISTRATION.md`](docs/PREREGISTRATION.md)),
+    but it hasn't been run because the data purchase needs approval.
 
-### Evidence quality: **7.5 / 10** (below the 8/10 target)
-
-| Item | Score | Reason |
-|---|---|---|
-| Data quality and realistic costs | 1.5 / 2 | Real NQ front-month data, 2020–2026 (1,667 sessions), validated against two independent sources: timezone/DST confirmed, closes match within 1 pt 82% of the time. Costs are realistic and stress-tested. **But** the bars are built from 3-second snapshots (highs and lows understated by a median 0.25 pt), there is no /NQ volume, and the final strategy's result **halves** on the independent true-OHLC data |
-| Out-of-sample and walk-forward | 1.5 / 2 | Chronological TRAIN/VAL/OOS fixed before tuning, plus a 10-window rolling walk-forward. OOS never drove a decision, but it was *viewed* after each of the 4 cycles, so it's no longer pristine for future work |
-| Robustness across parameter changes | 1 / 2 | Sensitivity was measured thoroughly: one-at-a-time, neighbour rules, sessions, costs, /ES. It shows the in-sample plateau **doesn't carry over to OOS**, so the evidence for robustness is weak |
-| Sample size and regimes | 1.5 / 2 | Covers the 2020 crash, the 2021 bull market, the 2022 bear market, the 2025 tariff shock and 2026. The final strategy has only ~470 trades in total and 161 OOS, with no pre-2020 history |
-| Transparent and reproducible reporting | 2 / 2 | Public data, scripts for every step, append-only configs, all failed and rejected variants reported, OOS degradation stated plainly |
-
-A high code score says nothing about profitability. The evidence quality is good enough to
-support a **negative** conclusion: no validated edge.
+Item-by-item scoring: `docs/AUDIT.md` §9.
 
 ## Known weaknesses
 
 * **No validated edge.** The final candidate's OOS and walk-forward results are ≤ 0. Every
   in-sample improvement made OOS worse than v1, which is a sign of over-fitting the validation period.
-* **Multiple testing.** About 7,000 configurations were evaluated. No deflated-Sharpe or
-  White's Reality Check correction was applied; the OOS and walk-forward results serve as the
-  practical check.
+* **Multiple testing.** About 7,000 configurations were evaluated. A Deflated Sharpe Ratio was
+  added in the audit: for v3 it is 0.92 at 10 assumed independent trials, 0.57 at 1,000 and
+  0.42 at 7,000. White's Reality Check / SPA was not run because per-trial return series weren't
+  stored. No adjustment removes selection bias completely.
 * **Data.** Snapshot-derived minute bars, a single recorder (with gaps such as March 2020), and
   2020+ only. Volume-confirmed breakouts couldn't be tested on the primary data.
 * **Data-source sensitivity.** On true exchange OHLC data (2023–2025), v3 earns $69 instead of

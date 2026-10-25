@@ -1,0 +1,2 @@
+source,strategy,period,metric,before,after
+eval/summary.csv,B4_eu_open_long_00_04,oos,max_dd_usd,-19725.0,-19920.0

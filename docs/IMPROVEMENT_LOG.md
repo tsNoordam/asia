@@ -10,6 +10,13 @@ At most four cycles.
 Configurations live in `config/strategies.json` (append-only). Numbers are base costs, per NQ
 contract. Regenerate them with `python scripts/evaluate.py <name>`.
 
+> **Status of the OOS period (added by the integrity audit, see [AUDIT.md](AUDIT.md)).** The period
+> 2024-07 → 2026-10 is a **previously inspected out-of-sample period ("OOS-I")**, not an untouched
+> holdout. It never chose a parameter, but its results were viewed when v1 was frozen and after
+> each improvement cycle, and full-sample baseline smoke tests were run before the split was fixed.
+> It must not be used to select parameters, filters or strategies. A genuinely independent test
+> needs new data (pre-2020, see AUDIT.md §8) or future live/paper data.
+
 ## Pre-cycle: candidate selection (Phase 3)
 
 | Step | What was done | Result |

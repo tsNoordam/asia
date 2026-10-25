@@ -4,7 +4,15 @@ Full tables, including by-year, long/short, cost stress, sensitivity, walk-forwa
 robustness checks, are generated into [`RESULTS_TABLES.md`](RESULTS_TABLES.md). This page
 summarises them. All figures are per NQ contract after base costs ($5 round turn + 1 tick of
 slippage per side on market/stop orders). Splits: TRAIN 2020-01 → 2022-12, VAL 2023-01 → 2024-06,
-OOS 2024-07 → 2026-10.
+OOS 2024-07 → 2026-10 (previously inspected; see note below). Max drawdowns were recomputed with the
+corrected zero-baseline formula; only one reported value changed (AUDIT.md §1).
+
+> **Status of the OOS period (added by the integrity audit, see [AUDIT.md](AUDIT.md)).** The period
+> 2024-07 → 2026-10 is a **previously inspected out-of-sample period ("OOS-I")**, not an untouched
+> holdout. It never chose a parameter, but its results were viewed when v1 was frozen and after
+> each improvement cycle, and full-sample baseline smoke tests were run before the split was fixed.
+> It must not be used to select parameters, filters or strategies. A genuinely independent test
+> needs new data (pre-2020, see AUDIT.md §8) or future live/paper data.
 
 ## Headline
 
