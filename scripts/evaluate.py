@@ -8,7 +8,7 @@ row per period to results/eval/summary.csv.
 Usage:
   python scripts/evaluate.py                      # every baseline + candidate
   python scripts/evaluate.py B_fade_v1 B1_simple_breakout
-  python scripts/evaluate.py --no-oos B_fade_v2   # development: hide OOS
+  python scripts/evaluate.py --no-oos B_fade_v2   # development: hide OOS, writes results/eval_dev/
 """
 import argparse
 import dataclasses
@@ -18,7 +18,7 @@ import pathlib
 import pandas as pd
 
 from asiabt.engine import Costs, Params, run
-from asiabt.metrics import by_year, summarize
+from asiabt.metrics import by_year, inference, summarize
 from asiabt.research import load_grid, period
 
 CFG = pathlib.Path("config/strategies.json")
@@ -51,12 +51,16 @@ def params_of(spec):
     return None if spec is None else Params(**spec)
 
 
+def _period_trades(trades, g, name):
+    sub = period(g, name) if name != "full" else g
+    return (trades[trades["day"].isin(sub.days)] if len(trades) else trades), sub.days
+
+
 def split_stats(trades, g, periods):
     res = {}
     for name in periods:
-        sub = period(g, name) if name != "full" else g
-        t = trades[trades["day"].isin(sub.days)] if len(trades) else trades
-        res[name] = summarize(t, sub.days)
+        t, days = _period_trades(trades, g, name)
+        res[name] = summarize(t, days)
     return res
 
 
@@ -72,6 +76,8 @@ def evaluate(name, spec, periods):
         trades[cname] = run(g, p, c)
         rep[cname] = split_stats(trades[cname], g, periods)
     t = trades["base"]
+    # daily-level inference (day-block bootstrap, Newey-West); see asiabt.metrics.inference
+    rep["inference"] = {per: inference(*_period_trades(t, g, per)) for per in periods}
     rep["by_year"] = by_year(t).round(2).reset_index().to_dict(orient="records")
     rep["by_side"] = {}
     for side, lab in ((1, "long"), (-1, "short")):
@@ -103,6 +109,9 @@ def main():
     cfg = load_cfg()
     names = a.names or list(cfg)
     periods = ["train", "val"] + ([] if a.no_oos else ["oos", "full"])
+    global OUT
+    if a.no_oos:  # development runs never overwrite the frozen full reports
+        OUT = OUT.parent / "eval_dev"
     OUT.mkdir(parents=True, exist_ok=True)
     rows = []
     for n in names:
@@ -112,7 +121,9 @@ def main():
             s = rep["base"][per]
             rows.append({"strategy": n, "period": per, **{k: s.get(k) for k in (
                 "trades", "net_usd", "pf", "win_rate", "avg_usd", "avg_win", "avg_loss", "t_stat",
-                "sharpe", "max_dd_usd", "exposure", "long_n", "long_usd", "short_n", "short_usd")}})
+                "sharpe", "max_dd_usd", "exposure", "long_n", "long_usd", "short_n", "short_usd")},
+                **{k: rep.get("inference", {}).get(per, {}).get(k) for k in (
+                    "daily_mean_usd", "daily_t_nw", "daily_mean_ci95", "trade_mean_ci95", "p_boot_le0", "block_len")}})
         b = rep["base"]
         print(f"{n:24s} " + " | ".join(
             f"{per}: n={b[per]['trades']} avg=${b[per]['avg_usd'] if b[per]['trades'] else 0:.0f} "

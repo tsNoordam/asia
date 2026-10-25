@@ -6,7 +6,12 @@
 2. Out-of-market: identical rules (ATR-scaled) on /ES from the same recorder,
    with ES contract economics ($50/pt).
 3. Asian-session definitions R1/R2/R3 for the final candidate.
-4. Bootstrap 95% confidence interval of the mean trade per period.
+4. Bootstrap 95% confidence intervals of the mean trade per period:
+   (a) i.i.d. resampling of individual TRADES (assumes independent trades;
+       kept for comparability with the 50f822f report), and
+   (b) circular block bootstrap over TRADING DAYS (asiabt.metrics.inference),
+       which keeps same-session trades together and allows for serial
+       dependence. (b) is the primary interval.
 
 Usage: python scripts/robustness.py [strategy ...]  -> results/robustness.json
 """
@@ -19,7 +24,7 @@ import pandas as pd
 
 from asiabt.data import build_grid, load_minutes
 from asiabt.engine import Costs, Params, run
-from asiabt.metrics import summarize
+from asiabt.metrics import inference, summarize
 from asiabt.research import SPLITS, load_grid, period
 
 CFG = json.loads(pathlib.Path("config/strategies.json").read_text())["candidates"]
@@ -77,6 +82,8 @@ def main():
                                   for per in ("train", "val", "oos")}
         # 4. bootstrap CI of mean trade
         r["bootstrap_mean_usd_ci95"] = {per: boot_ci(run(period(g, per), p)["usd"]) for per in SPLITS}
+        r["bootstrap_mean_usd_ci95_label"] = "i.i.d. trade resampling (assumes independent trades)"
+        r["day_block_inference"] = {per: inference(run(period(g, per), p), period(g, per).days) for per in SPLITS}
         out[n] = r
         print(n, json.dumps(r, indent=1))
     pathlib.Path("results/robustness.json").write_text(json.dumps(out, indent=1))
