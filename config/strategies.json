@@ -163,6 +163,39 @@
       "fd_stop_buffer_atr": 0.05,
       "direction": "both",
       "max_trades": 2
+    },
+    "B_fade_v1r1": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 99.0,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "both",
+      "max_trades": 1,
+      "fd_both_sides": "latest"
+    },
+    "B_fade_v3r1": {
+      "mode": "fade",
+      "range_start": "18:00",
+      "range_end": "00:00",
+      "entry_cutoff": "08:00",
+      "flat_time": "11:00",
+      "tf": 5,
+      "fd_min_ext": 0.1,
+      "fd_ext_unit": "atr",
+      "fd_max_ext": 0.225,
+      "fd_target": "opposite",
+      "fd_stop_buffer_atr": 0.05,
+      "direction": "both",
+      "max_trades": 2,
+      "fd_both_sides": "latest"
     }
-  }
+  },
+  "_comment_revisions": "Entries ending in 'r1' were appended by the integrity audit (docs/AUDIT.md). They are the frozen rules with explicit fd_both_sides='latest' (chronological resolution of two-sided ambiguous fade signals). Frozen entries without the field use the legacy_short_first default, so their results reproduce commit 50f822f exactly."
 }

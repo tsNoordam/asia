@@ -181,3 +181,88 @@ def test_daily_features_use_only_past_days():
     cols = ["atr14_prev", "sma20_prev", "prev_close_adj", "ret5_prev"]
     # features of every day before the perturbed tail (incl. the first perturbed day) are unchanged
     pd.testing.assert_frame_equal(g1.daily[cols].iloc[:-4], g2.daily[cols].iloc[:-4])
+
+
+# --- Stage 2: two-sided excursion ambiguity ---------------------------------
+# Range 18:00-00:00 oscillates 90..110 (high/low +-0.25). ATR = 100, so with
+# fd_min_ext = 0.02 an excursion needs >= 2 points; cap fd_max_ext = 0.3 -> 30 pts.
+
+def _amb_grid(after):
+    """`after(k)` -> (open, high, low, close) for offsets k >= 360."""
+    start = pd.Timestamp("2024-01-10") - pd.Timedelta(hours=6)
+    idx = pd.date_range(start, periods=MINUTES_PER_DAY, freq="1min")
+    rows = []
+    for k in range(MINUTES_PER_DAY):
+        if k < 360:
+            px = 100 + 10 * math.sin(k / 20)
+            rows.append((px, px + 0.25, px - 0.25, px))
+        else:
+            rows.append(after(k))
+    f = pd.DataFrame(rows, columns=["open", "high", "low", "close"], index=idx)
+    return _grid([f])
+
+
+def _flat(px):
+    return (px, px + 0.25, px - 0.25, px)
+
+
+AMB = dict(mode="fade", tf=5, fd_min_ext=0.02, fd_max_ext=0.3, fd_target="opposite", max_trades=1)
+
+
+def test_upper_excursion_only_gives_short():
+    g = _amb_grid(lambda k: _flat(115.0) if k < 370 else _flat(105.0))
+    for pol in ("legacy_short_first", "latest", "skip"):
+        tr = run(g, Params(**AMB, fd_both_sides=pol), NOCOST)
+        assert len(tr) == 1 and tr.iloc[0].side == -1 and not tr.iloc[0].ambiguous
+
+
+def test_lower_excursion_only_gives_long():
+    g = _amb_grid(lambda k: _flat(85.0) if k < 370 else _flat(95.0))
+    for pol in ("legacy_short_first", "latest", "skip"):
+        tr = run(g, Params(**AMB, fd_both_sides=pol), NOCOST)
+        assert len(tr) == 1 and tr.iloc[0].side == 1 and not tr.iloc[0].ambiguous
+
+
+def _both_same_minute(k):
+    if k == 362:   # one 1-minute bar spikes through BOTH sides, closes inside
+        return (100.0, 115.0, 85.0, 100.0)
+    return _flat(100.0)
+
+
+def test_both_sides_same_minute_legacy_reproduces_short_bias():
+    tr = run(_amb_grid(_both_same_minute), Params(**AMB, fd_both_sides="legacy_short_first"), NOCOST)
+    # the defect: the short is chosen purely by branch order
+    assert len(tr) == 1 and tr.iloc[0].side == -1 and tr.iloc[0].ambiguous
+
+
+def test_both_sides_same_minute_is_skipped_by_corrected_rules():
+    for pol in ("latest", "skip"):
+        tr = run(_amb_grid(_both_same_minute), Params(**AMB, fd_both_sides=pol), NOCOST)
+        assert len(tr) == 0
+
+
+def _both_different_bars(k):
+    # up-sweep at 00:01, then a down-sweep at 00:03, both inside the first
+    # 5-minute signal bar [00:00, 00:05), which closes back inside the range
+    if k == 361:
+        return (100.0, 115.0, 100.0, 112.0)
+    if k == 363:
+        return (100.0, 100.0, 85.0, 88.0)
+    return _flat(100.0)
+
+
+def test_both_sides_different_minutes_latest_fades_most_recent():
+    tr = run(_amb_grid(_both_different_bars), Params(**AMB, fd_both_sides="latest"), NOCOST)
+    assert len(tr) == 1 and tr.iloc[0].side == 1 and tr.iloc[0].ambiguous  # low was set last
+    tr = run(_amb_grid(_both_different_bars), Params(**AMB, fd_both_sides="skip"), NOCOST)
+    assert len(tr) == 0
+    tr = run(_amb_grid(_both_different_bars), Params(**AMB, fd_both_sides="legacy_short_first"), NOCOST)
+    assert tr.iloc[0].side == -1
+
+
+def test_reentry_after_excursion_beyond_cap_is_not_faded():
+    # 40-point excursion > 30-point cap, then a close back inside: no trade,
+    # and the side stays disabled for the session (the extreme never shrinks)
+    g = _amb_grid(lambda k: _flat(150.0) if k < 370 else _flat(105.0))
+    for pol in ("legacy_short_first", "latest", "skip"):
+        assert len(run(g, Params(**AMB, fd_both_sides=pol), NOCOST)) == 0

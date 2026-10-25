@@ -66,6 +66,14 @@ class Params:
     fd_stop_buffer_atr: float = 0.05  # stop beyond the excursion extreme
     fd_target: str = "mid"            # mid | opposite | r
     fd_target_r: float = 1.0
+    # When BOTH sides qualify at the same signal close:
+    #   legacy_short_first : short wins by branch order (behaviour of commit 50f822f;
+    #                        default only so frozen configs reproduce exactly)
+    #   latest             : fade the side whose excursion extreme was set most recently
+    #                        (1-minute resolution, no look-ahead); skip if both extremes
+    #                        were set in the same minute
+    #   skip               : never trade an ambiguous signal
+    fd_both_sides: str = "legacy_short_first"
     # --- trade management (both modes) ----------------------------------
     be_trigger: str = "none"          # none | mid (range midpoint) | <float> R multiple, e.g. "1.0"
     max_hold_min: int = 0             # time stop in minutes after entry (0 = only flat_time)
@@ -83,7 +91,7 @@ class Params:
 
 TRADE_COLS = ["day", "side", "mode", "sig_off", "entry_off", "entry_px", "exit_off", "exit_px",
               "reason", "stop", "target", "risk_pts", "pts", "usd", "mae_pts", "mfe_pts",
-              "range_hi", "range_lo", "range_atr", "atr", "hold_min"]
+              "range_hi", "range_lo", "range_atr", "atr", "hold_min", "ambiguous"]
 
 
 def _first_valid(a: np.ndarray, start: int, end: int) -> int:
@@ -184,7 +192,7 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
         day = grid.days[i]
         base = dict(day=day, mode=mode, range_hi=RH, range_lo=RL, range_atr=ratio, atr=atr)
 
-        def record(side, sig_off, e, entry_px, stop, target):
+        def record(side, sig_off, e, entry_px, stop, target, ambiguous=False):
             be_px = math.nan
             if p.be_trigger == "mid":
                 mid = (RH + RL) / 2
@@ -198,7 +206,7 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
                          "exit_off": xo, "exit_px": xp, "reason": why, "stop": stop, "target": target,
                          "risk_pts": abs(entry_px - stop), "pts": pts,
                          "usd": pts * costs.point_value - costs.commission_rt,
-                         "mae_pts": mae, "mfe_pts": mfe, "hold_min": xo - e})
+                         "mae_pts": mae, "mfe_pts": mfe, "hold_min": xo - e, "ambiguous": ambiguous})
             return xo
 
         if mode == "timed":
@@ -212,6 +220,7 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
         n_tr = 0
         b = re
         hi_since, lo_since = -math.inf, math.inf
+        hi_t = lo_t = -1  # minute offset at which hi_since / lo_since were set
         while b + tf <= cut and n_tr < p.max_trades:
             seg_h, seg_l, seg_c = h[b:b + tf], l[b:b + tf], c[b:b + tf]
             if not np.isfinite(seg_c).any():
@@ -219,7 +228,10 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
                 continue
             bh, bl = np.nanmax(seg_h), np.nanmin(seg_l)
             bc = seg_c[np.isfinite(seg_c)][-1]
-            hi_since, lo_since = max(hi_since, bh), min(lo_since, bl)
+            if bh > hi_since:
+                hi_since, hi_t = bh, b + int(np.nanargmax(seg_h))
+            if bl < lo_since:
+                lo_since, lo_t = bl, b + int(np.nanargmin(seg_l))
             sig_end = b + tf  # first minute after the signal bar closed
             side = 0
             if mode == "breakout":
@@ -258,6 +270,7 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
                     xo = record(side, sig_end - 1, e, entry_px, stop, target)
                     n_tr += 1
                     hi_since, lo_since = -math.inf, math.inf
+                    hi_t = lo_t = -1
                     b = sig_end if xo < sig_end else sig_end + ((xo - sig_end) // tf + 1) * tf
                     continue
             elif mode == "fade":
@@ -265,9 +278,14 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
                 ext_up, ext_dn = hi_since - RH, RL - lo_since
                 up_ok = allow_short and p.fd_min_ext * unit <= ext_up <= p.fd_max_ext * unit and ext_up > 0
                 dn_ok = allow_long and p.fd_min_ext * unit <= ext_dn <= p.fd_max_ext * unit and ext_dn > 0
-                if up_ok and RL < bc < RH:
+                inside = RL < bc < RH
+                ambiguous = inside and up_ok and dn_ok
+                if ambiguous and p.fd_both_sides != "legacy_short_first":
+                    if p.fd_both_sides == "latest" and hi_t != lo_t:
+                        side = -1 if hi_t > lo_t else 1
+                elif up_ok and inside:
                     side = -1
-                elif dn_ok and RL < bc < RH:
+                elif dn_ok and inside:
                     side = 1
                 if side:
                     e = _first_valid(o, sig_end, flat)
@@ -286,9 +304,10 @@ def run(grid: DayGrid, p: Params, costs: Costs = Costs()) -> pd.DataFrame:
                     if risk <= 0 or side * (target - entry_px) <= 0:
                         b = sig_end  # stop or target already passed at entry: skip
                         continue
-                    xo = record(side, sig_end - 1, e, entry_px, stop, target)
+                    xo = record(side, sig_end - 1, e, entry_px, stop, target, ambiguous)
                     n_tr += 1
                     hi_since, lo_since = -math.inf, math.inf
+                    hi_t = lo_t = -1
                     b = sig_end if xo < sig_end else sig_end + ((xo - sig_end) // tf + 1) * tf
                     continue
             b += tf

@@ -8,7 +8,7 @@
 //
 // EVIDENCE WARNING: in the Python study (docs/RESULTS.md) the default fade
 // configuration was positive in-sample (2020-01 .. 2024-06) but had NO edge in
-// the untouched 2024-07 .. 2026-10 out-of-sample period or in walk-forward
+// the 2024-07 .. 2026-10 out-of-sample period (previously inspected, see docs/AUDIT.md) or in walk-forward
 // tests. This script is for paper trading and further research only.
 //
 // Design (mirrors asiabt/engine.py):
@@ -70,6 +70,8 @@ extUnit  = input.string("ATR", "Excursion unit", options = ["ATR", "Range width"
 stopBuf  = input.float(0.05, "Stop buffer beyond extreme (x ATR)", step = 0.01, group = G_FADE)
 fdTarget = input.string("Opposite boundary", "Target", options = ["Opposite boundary", "Midpoint", "R multiple"], group = G_FADE)
 fdTgtR   = input.float(1.0, "Target R (if R multiple)", step = 0.25, group = G_FADE)
+bothOpt  = input.string("Latest extreme", "If both sides qualify", options = ["Latest extreme", "Skip", "Legacy short-first"], group = G_FADE,
+     tooltip = "Both an upper and a lower excursion qualify at the same signal close. Latest extreme = fade the side whose extreme was set on the more recent chart bar; skip if both were set on the same bar (use a 1-minute chart for 1-minute resolution). Legacy short-first reproduces commit 50f822f, where the short won by branch order.")
 
 const string G_BO = "Breakout"
 boBuf    = input.float(0.0, "Close beyond range by (x ATR)", step = 0.01, group = G_BO)
@@ -133,6 +135,10 @@ var float hiSince = na
 var float loSince = na
 var float sigHi = na
 var float sigLo = na
+var int   sigHiT = na             // chart-bar time at which sigHi / sigLo were set
+var int   sigLoT = na
+var int   hiT = na                // chart-bar time at which hiSince / loSince were set
+var int   loT = na
 var int   nTrades = 0
 var float trStop = na
 var float trTgt = na
@@ -153,6 +159,8 @@ if newDay
     dayOK := false
     hiSince := na
     loSince := na
+    hiT := na
+    loT := na
     sigHi := na
     sigLo := na
     nTrades := 0
@@ -183,16 +191,24 @@ allowShort = dirOpt != "Long only" and (trendOpt == "None" or (trendOpt == "With
 flatNow = strategy.position_size == 0
 scanning = inDay and rangeDone and dayOK and off >= re and offEnd <= cut and nTrades < maxTrades and flatNow
 // A signal bar only counts if it was observed from its first chart bar, so
-// partial bars after an exit are skipped (as in the Python engine).
+// partial bars after an exit are skipped, and so is a signal bar whose first
+// chart bar contains the exit (as in the Python engine).
+exitedNow = strategy.position_size == 0 and nz(strategy.position_size[1]) != 0
 if not scanning
     sigHi := na
     sigLo := na
-else if (off - re) % sigTf == 0
+else if (off - re) % sigTf == 0 and not exitedNow
     sigHi := high
     sigLo := low
+    sigHiT := time
+    sigLoT := time
 else if not na(sigHi)
-    sigHi := math.max(sigHi, high)
-    sigLo := math.min(sigLo, low)
+    if high > sigHi
+        sigHi := high
+        sigHiT := time
+    if low < sigLo
+        sigLo := low
+        sigLoT := time
 sigClose = scanning and not na(sigHi) and (offEnd - re) % sigTf == 0
 
 bool longSig = false
@@ -201,8 +217,12 @@ float sigStop = na
 float sigTgt = na
 
 if sigClose
-    hiSince := na(hiSince) ? sigHi : math.max(hiSince, sigHi)
-    loSince := na(loSince) ? sigLo : math.min(loSince, sigLo)
+    if na(hiSince) or sigHi > hiSince
+        hiSince := sigHi
+        hiT := sigHiT
+    if na(loSince) or sigLo < loSince
+        loSince := sigLo
+        loT := sigLoT
     sigHi := na
     sigLo := na
     mid = (rHi + rLo) / 2
@@ -213,13 +233,17 @@ if sigClose
         inside = close < rHi and close > rLo
         upOk = allowShort and extUp > 0 and extUp >= minExt * unit and extUp <= maxExt * unit
         dnOk = allowLong and extDn > 0 and extDn >= minExt * unit and extDn <= maxExt * unit
+        // Both sides qualify: decide by chronology (or skip), never by branch order.
+        both = upOk and dnOk and inside
+        pickShort = both ? (bothOpt == "Legacy short-first" or (bothOpt == "Latest extreme" and hiT > loT)) : upOk
+        pickLong  = both ? (bothOpt == "Latest extreme" and loT > hiT) : dnOk
         // SHORT: price swept above the range, then a signal bar closed back inside.
-        if upOk and inside
+        if pickShort and inside
             shortSig := true
             sigStop := hiSince + stopBuf * atrD
             sigTgt := fdTarget == "Opposite boundary" ? rLo : fdTarget == "Midpoint" ? mid : na
         // LONG: price swept below the range, then a signal bar closed back inside.
-        else if dnOk and inside
+        else if pickLong and inside
             longSig := true
             sigStop := loSince - stopBuf * atrD
             sigTgt := fdTarget == "Opposite boundary" ? rHi : fdTarget == "Midpoint" ? mid : na
@@ -249,6 +273,8 @@ if sigClose
         nTrades += 1
         hiSince := na
         loSince := na
+        hiT := na
+        loT := na
         id = longSig ? "L" : "S"
         strategy.entry(id, longSig ? strategy.long : strategy.short, comment = dayMode + (longSig ? " long" : " short"))
         // Provisional bracket from the signal close; re-anchored on the fill below.
